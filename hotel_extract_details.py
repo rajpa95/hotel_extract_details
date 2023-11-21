@@ -28,16 +28,15 @@ for _, row in df.iterrows():
     }
 
     # Send an HTTP GET request with the specified headers for the Referer
-    response = requests.get(url, headers=headers)
-
-
-    if response.status_code == 200:
+    try:
+        response = requests.get(url, headers=headers, verify=False)
+        response.raise_for_status()  # Raise an HTTPError for bad responses
 
         # Parse the JSON content
         json_data = response.json()
 
         # Iterate over each room type to extract the room rates from the JSON data
-        for room_type in json_data['roomTypes']:
+        for room_type in json_data.get('roomTypes', []):
             # Iterate over each offer within the room type
             for offer in room_type.get('offers', []):
                 # Extract the desired information from the JSON file and create a rate dictionary
@@ -52,7 +51,19 @@ for _, row in df.iterrows():
                 }
                 # Add the rate to the list of rates and convert it to JSON
                 rates.append(json.dumps(rate))
-                print(json.dumps(rate, indent=2, sort_keys=True))
+                print(json.dumps(rate, indent=4, sort_keys=True))
 
-    else:
-        print(f"Error: Unable to fetch data. Status code {response.status_code}")
+    except requests.exceptions.RequestException as e:
+        print(f"Error: {e}")
+
+    except json.JSONDecodeError as e:
+        print(f"Error decoding JSON: {e}")
+
+    except Exception as e:
+        print(f"An unexpected error occurred: {e}")
+
+# Save the extracted rates to a JSON file
+with open('extracted_rates.json', 'w') as file:
+    json.dump(rates, file, indent=4)
+
+print("Extraction complete. Extracted rates saved to 'extracted_rates.json'.")
